@@ -1,6 +1,6 @@
 # last-light-armory-ingest
 
-_Last updated: 2026-07-05 — update this line whenever the file changes materially._
+_Last updated: 2026-07-06 — update this line whenever the file changes materially._
 
 ## What This Repo Is
 
@@ -21,12 +21,10 @@ This repo implements Milestones 1–5 of the master project spec
 Milestones 6–10 (perk/roll scoring, ranking, search UI) belong to the sibling
 repo, **last-light-armory**.
 
-## Repo Relationship & Ownership Split (assumption — confirm this)
+## Repo Relationship & Ownership Split (CONFIRMED 2026-07-06)
 
-Both repos share one Postgres database. The split below is *my proposed
-reading* of "this repo is focused solely on ingesting data" — not something
-that was explicitly spelled out. Confirm or correct it before Milestone 5 gets
-too far along, since it determines who's allowed to write to which columns.
+Both repos share one Postgres database. The split below was confirmed by the
+owner on 2026-07-06.
 
 | Concern | Owner | Notes |
 |---|---|---|
@@ -108,16 +106,21 @@ From `.env.example`:
 
 ## Database
 
-- Server: `postgres.cuddelabs.com`
-- Database: `last_light_armory` (already created — currently bare, only the
-  `postgres` superuser exists)
-- App role: `last_light_armory_admin` (**not yet created**)
+- Server: `postgres.cuddelabs.com` (Postgres 18.4)
+- Database: `last_light_armory`
+- App role: `last_light_armory_admin` (created 2026-07-06; has CREATE on the
+  database — can create schemas — but no CREATEDB)
 
 ### `DATABASE_URL` format
 
 ```
 postgresql://last_light_armory_admin:<password>@postgres.cuddelabs.com:5432/last_light_armory
 ```
+
+**Percent-encode special characters in the password** (`/` → `%2F`,
+`@` → `%40`, `:` → `%3A`). An unencoded `/` silently truncates the URL
+authority and produces confusing "invalid port" errors. `internal/config`
+detects this case and says so.
 
 ## Bungie API Notes
 
@@ -167,7 +170,18 @@ mode, so there's no weekly signal left to hook into. Instead:
 - All writes are upserts keyed on Bungie `hash` values, never destructive
   replace.
 
-## Data Model (reference — implement as migrations)
+## Data Model
+
+**Source of truth: `migrations/*.sql`** (embedded in the binary). The SQL
+below is the original draft, kept for context; the implemented schema
+differs in these ways:
+
+- `weapon.archetype` dropped (archetype == weapon_type, decision #1)
+- `weapon` gained `rpm INTEGER` and `tier TEXT`
+- `perk` gained `enhanced BOOLEAN`
+- `roll` gained `combo_key TEXT` with `UNIQUE (weapon_id, combo_key)` —
+  without a natural key, re-ingestion would duplicate rolls
+- indexes on `weapon_perk(perk_id)` and `roll_perk(perk_id)`
 
 ```sql
 CREATE TABLE manifest_sync_state (
@@ -240,24 +254,36 @@ CREATE TABLE weapon_ranking (
 );
 ```
 
-## Open Decisions (resolve before the noted milestone — don't silently invent an answer and move on)
+## Decisions (all resolved 2026-07-06 — the "Open Decisions" list is settled)
 
-1. **Archetype derivation rule** — needed before Milestone 3. "Archetype"
-   (e.g. "140rpm Hand Cannon") isn't a native Bungie field; it's RPM stat +
-   weapon type + intrinsic frame. Don't guess bucket boundaries — pull real
-   RPM distributions per weapon type from the manifest first, then set
-   cutoffs from actual data, since buckets differ by weapon type.
-2. **"Currently obtainable" compound rule** — needed before Milestone 2. No
-   single Bungie flag covers this. Starting proposal: obtainable = (has an
-   active `DestinyCollectibleDefinition` source not flagged unavailable) OR
-   (craftable) OR (drops from a source Bungie currently marks active).
-   Validate against known-vaulted and known-available weapons before trusting
-   it at scale.
-3. **Ownership split above** — confirm the this-repo-vs-last-light-armory
-   table is actually how you want it divided; it's currently my inference,
-   not something you stated outright.
-4. **Migration tool & DB driver** — this doc assumes golang-migrate + pgx.
-   Update this file if you pick differently.
+1. **Archetype IS the weapon type** ("Auto Rifle", "Sniper Rifle", …). The
+   original "140rpm Hand Cannon"-style bucketing was a misstatement. The
+   `weapon.archetype` column from the draft schema was dropped;
+   `weapon_type` carries it, with `frame` and `rpm` alongside (for
+   bows/fusions/swords, `rpm` stores draw time / charge time / swing speed).
+2. **"Currently obtainable" heuristic v1**: obtainable = (has a
+   `DestinyCollectibleDefinition` entry that exists and is neither redacted
+   nor blacklisted) OR (craftable, i.e. `inventory.recipeItemHash` set).
+   Implemented in `internal/categorize`; refine with an UPDATE + rule change
+   there if validation against known-vaulted weapons demands it.
+3. **Ownership split confirmed** as tabled above. All weapons are imported
+   with the obtainable flag set accordingly (import-all-and-flag, not
+   filter-at-import).
+4. **golang-migrate + pgx v5 confirmed.** golang-migrate is used as a
+   library with `go:embed`-ded SQL files — the binary migrates the schema
+   itself at startup; no migrate CLI is installed or needed.
+5. **Roll scope**: `roll` rows are combinations over trait + origin columns
+   only (never barrels/mags — the full cartesian is ~1.2 billion rows).
+   Within a trait column, enhanced perk variants are preferred when present,
+   base traits otherwise, so Exotics and non-enhanceable weapons still get
+   rolls. Identity = `combo_key` (SHA-256 of sorted column:perk pairs),
+   unique per weapon. `weapon_perk` still records the full pool including
+   barrels/mags/enhanced.
+6. **Integration tests run against the shared dev server** (the DB is a dev
+   environment; a different database system arrives at production). Tests
+   isolate themselves in throwaway `it_*` schemas via `search_path` and drop
+   them on cleanup — `public` is never touched. `TEST_DATABASE_URL`
+   overrides the target. Run: `go test -tags integration ./internal/db/`.
 
 ## Coding Conventions
 
@@ -274,7 +300,13 @@ CREATE TABLE weapon_ranking (
 ## Commands
 
 ```
-go run ./cmd/ingest                                    # run a full check-and-import pass
-go test ./...                                           # run all tests
-migrate -path migrations -database "$DATABASE_URL" up   # apply pending migrations
+go run ./cmd/ingest                            # full check-and-import pass
+go run ./cmd/ingest -dry-run                   # process but write nothing
+go run ./cmd/ingest -force                     # import even if version unchanged
+go test ./...                                  # unit tests (fast, offline)
+go test -race ./...                            # with race detector
+go test -tags integration ./internal/db/       # integration tests (dev Postgres)
 ```
+
+Migrations apply automatically at binary startup (golang-migrate as a
+library, embedded SQL) — there is no separate migrate CLI step.
