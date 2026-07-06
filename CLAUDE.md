@@ -113,34 +113,11 @@ From `.env.example`:
   `postgres` superuser exists)
 - App role: `last_light_armory_admin` (**not yet created**)
 
-### One-Time Setup (run manually via psql as the `postgres` superuser — this is *not* something the ingest binary does at runtime, and not something to automate into app startup)
-
-```sql
-CREATE ROLE last_light_armory_admin WITH LOGIN PASSWORD 'REPLACE_WITH_A_GENERATED_SECRET';
-ALTER DATABASE last_light_armory OWNER TO last_light_armory_admin;
-\c last_light_armory
-GRANT ALL ON SCHEMA public TO last_light_armory_admin;
-```
-
-Making the role the database owner means it can create/alter tables via
-migrations without needing per-object grants later. Generate the password with
-a real secret generator, put it straight into `.env`, and never paste the
-actual value into this file, a commit message, or a chat log.
-
-Also worth checking, separately from the SQL above: whether `pg_hba.conf` /
-any firewall in front of `postgres.cuddelabs.com` actually permits connections
-from wherever this job runs (your dev machine, a CI runner, a scheduled server).
-Creating the role doesn't guarantee the network path is open — that's a
-separate thing to verify before assuming a connection failure is a code bug.
-
 ### `DATABASE_URL` format
 
 ```
-postgresql://last_light_armory_admin:<password>@postgres.cuddelabs.com:5432/last_light_armory?sslmode=require
+postgresql://last_light_armory_admin:<password>@postgres.cuddelabs.com:5432/last_light_armory
 ```
-
-Port 5432 and `sslmode=require` are defaults, not confirmed against this
-specific instance — check both against how the server's actually configured.
 
 ## Bungie API Notes
 
