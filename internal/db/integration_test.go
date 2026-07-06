@@ -165,6 +165,24 @@ func TestMigrateUpAndDown(t *testing.T) {
 	}
 }
 
+func TestMigrateCreatesConsumptionIndexes(t *testing.T) {
+	env := setup(t)
+	ctx := context.Background()
+
+	var count int
+	err := env.pool.QueryRow(ctx, `
+		SELECT count(*) FROM pg_indexes
+		WHERE schemaname = current_schema()
+		  AND indexname IN ('weapon_weapon_type_idx', 'weapon_obtainable_idx',
+		                    'perk_name_idx', 'roll_weapon_score_idx')`).Scan(&count)
+	if err != nil {
+		t.Fatalf("querying pg_indexes: %v", err)
+	}
+	if count != 4 {
+		t.Errorf("found %d of 4 expected consumption indexes", count)
+	}
+}
+
 func TestSyncStateRoundTrip(t *testing.T) {
 	env := setup(t)
 	ctx := context.Background()
@@ -428,6 +446,76 @@ func TestReplaceRollsUnknownPerkFails(t *testing.T) {
 	}
 	if count != 0 {
 		t.Errorf("rolls after failed tx = %d, want 0", count)
+	}
+}
+
+func TestReadQueriesRoundTrip(t *testing.T) {
+	env := setup(t)
+	ctx := context.Background()
+
+	// Seed through the same write paths ingest uses.
+	if _, err := env.store.UpsertWeapons(ctx, sampleWeapons()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.store.UpsertPerks(ctx, samplePerks()); err != nil {
+		t.Fatal(err)
+	}
+	columns := []models.PerkColumn{
+		{Index: 0, Perks: []models.Perk{{Hash: 30}, {Hash: 31}}},
+		{Index: 3, Perks: []models.Perk{{Hash: 40}}},
+	}
+	if _, _, err := env.store.ReplaceWeaponPerks(ctx, 1000, columns); err != nil {
+		t.Fatal(err)
+	}
+	perkIDs, err := env.store.PerkIDsByHash(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rolls := []db.Roll{
+		{ComboKey: "bbb", Perks: []models.RollPerk{{Column: 0, PerkHash: 31}}},
+		{ComboKey: "aaa", Perks: []models.RollPerk{{Column: 0, PerkHash: 30}, {Column: 3, PerkHash: 40}}},
+	}
+	if _, _, err := env.store.ReplaceRolls(ctx, 1000, rolls, perkIDs); err != nil {
+		t.Fatal(err)
+	}
+
+	weapons, err := env.store.AllWeapons(ctx)
+	if err != nil {
+		t.Fatalf("AllWeapons: %v", err)
+	}
+	if len(weapons) != 2 || weapons[0].Hash != 1000 || weapons[1].Hash != 1001 {
+		t.Errorf("weapons = %+v", weapons)
+	}
+	if weapons[0].Frame == nil || *weapons[0].Frame != "Adaptive Frame" || weapons[1].Frame != nil {
+		t.Errorf("frames round-trip wrong: %+v", weapons)
+	}
+
+	perks, err := env.store.AllPerks(ctx)
+	if err != nil {
+		t.Fatalf("AllPerks: %v", err)
+	}
+	if len(perks) != 4 || perks[0].Hash != 30 || perks[0].PvEScore != nil {
+		t.Errorf("perks = %+v", perks)
+	}
+
+	links, err := env.store.AllWeaponPerks(ctx)
+	if err != nil {
+		t.Fatalf("AllWeaponPerks: %v", err)
+	}
+	if len(links) != 3 || links[0] != (db.WeaponPerkRow{WeaponHash: 1000, ColumnIndex: 0, PerkHash: 30}) {
+		t.Errorf("links = %+v", links)
+	}
+
+	rollRows, err := env.store.AllRollPerks(ctx)
+	if err != nil {
+		t.Fatalf("AllRollPerks: %v", err)
+	}
+	// Ordered by combo key: "aaa" (2 perks) before "bbb" (1 perk).
+	if len(rollRows) != 3 || rollRows[0].ComboKey != "aaa" || rollRows[2].ComboKey != "bbb" {
+		t.Errorf("rollRows = %+v", rollRows)
+	}
+	if rollRows[0].OverallScore != nil {
+		t.Errorf("unscored roll has score: %+v", rollRows[0])
 	}
 }
 
