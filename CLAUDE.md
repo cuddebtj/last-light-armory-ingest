@@ -280,10 +280,20 @@ CREATE TABLE weapon_ranking (
    unique per weapon. `weapon_perk` still records the full pool including
    barrels/mags/enhanced.
 6. **Integration tests run against the shared dev server** (the DB is a dev
-   environment; a different database system arrives at production). Tests
-   isolate themselves in throwaway `it_*` schemas via `search_path` and drop
-   them on cleanup — `public` is never touched. `TEST_DATABASE_URL`
-   overrides the target. Run: `go test -tags integration ./internal/db/`.
+   environment). Tests isolate themselves in throwaway `it_*` schemas via
+   `search_path` and drop them on cleanup — `public` is never touched.
+   `TEST_DATABASE_URL` overrides the target. Run:
+   `go test -tags integration ./internal/db/`.
+7. **The database stays self-hosted and private** (decided 2026-07-06; may
+   migrate to managed hosting if the project makes money). It is never
+   exposed to the internet. The website consumes **static pre-baked JSON**
+   from `cmd/export` — the only data that leaves the network. Consequences:
+   the site can never query the DB live, GitHub Actions can't reach it (CI
+   runs unit tests only; ingest/export run on the private network via cron),
+   and score updates require a re-export.
+8. **Website: Next.js on Vercel** (sibling repo last-light-armory), building
+   from the committed export artifacts. Search/filtering happens client-side
+   over the JSON — which is why the schema has no trigram/fulltext indexes.
 
 ## Coding Conventions
 

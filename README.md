@@ -47,16 +47,46 @@ at a time; concurrent starts fail fast instead of queueing.
 - **Obtainable heuristic v1**: a weapon is obtainable when it has a live
   collectible entry (present, not redacted/blacklisted) **or** is craftable.
 
+## Serving the website (decided 2026-07-06)
+
+The Postgres server lives on a private network and is **never exposed
+publicly**. The website (Next.js on Vercel) consumes **static pre-baked
+JSON**, which is the only data that leaves the network:
+
+```
+[private network]                                  [public]
+cron → ingest ──→ Postgres ←── scoring job        Vercel builds the Next.js
+                     │      (last-light-armory)   site from committed JSON
+       cmd/export ───┴─→ JSON artifacts ── git push ──→ auto-rebuild
+```
+
+`cmd/export` writes (deterministically — identical data produces identical
+bytes, so re-exports diff cleanly in git):
+
+```
+export/meta.json            manifest version, generated-at, row counts
+export/perks.json           every perk: hash, name, enhanced, curated scores
+export/weapons/index.json   slim per-weapon entries for list/filter pages
+export/weapons/<hash>.json  full detail: fields, perk pool columns, rolls
+```
+
+Weapon documents reference perks by hash; the site joins names from
+perks.json. Current size: ~46 MB pretty-printed across 2,210 files (each
+weapon doc ~20 KB — the unit a page actually fetches). Re-export whenever
+ingest imports a new manifest or the scoring repo writes new scores.
+
 ## Layout
 
 ```
 cmd/ingest/          entrypoint (flags, logging, wiring)
+cmd/export/          static JSON artifact baker for the website
 internal/bungie/     the only Bungie HTTP client: API key, User-Agent,
                      rate limit, retry/backoff, streaming JSON decoder
 internal/config/     .env + environment loading and validation
 internal/categorize/ pure derivation rules: weapon fields, perk columns
 internal/rolls/      combination generation + combo keys
 internal/db/         pgx pool, embedded migrations, advisory lock, repos
+internal/export/     JSON artifact assembly (pure, deterministic)
 internal/ingest/     the pipeline orchestrator (parallel stages)
 internal/models/     shared domain structs
 migrations/          golang-migrate SQL, embedded into the binary
@@ -86,6 +116,7 @@ go run ./cmd/ingest                 # check version, import if changed
 go run ./cmd/ingest -force          # import even if version unchanged
 go run ./cmd/ingest -dry-run        # download + process, write nothing
 go run ./cmd/ingest -verbose -json  # debug-level structured logs
+go run ./cmd/export -out ./export   # bake static JSON artifacts for the website
 ```
 
 Exit code 0 covers both "imported" and "unchanged, skipped"; 1 is any
