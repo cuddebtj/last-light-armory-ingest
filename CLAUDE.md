@@ -55,6 +55,8 @@ too far along, since it determines who's allowed to write to which columns.
   safe.
 - Never commit real credentials anywhere in this repo, including this file.
   Secrets live only in `.env` (gitignored) or a proper secret manager.
+- Always use convetional commits and git branching strategies. **NEVER** commit
+  to `main` or `dev`.
 
 ## Tech Stack
 
