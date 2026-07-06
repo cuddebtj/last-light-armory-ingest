@@ -46,9 +46,13 @@ func (m *Manifest) ComponentPath(locale, component string) (string, bool) {
 }
 
 // DisplayProperties is the common name/description block on definitions.
+// Icon is a CDN path relative to https://www.bungie.net; empty when the
+// definition has no icon (HasIcon false).
 type DisplayProperties struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Icon        string `json:"icon"`
+	HasIcon     bool   `json:"hasIcon"`
 }
 
 // Item type / sub-type constants from Bungie's DestinyItemType and
@@ -96,6 +100,10 @@ type InventoryItemDefinition struct {
 	ItemTypeDisplayName string            `json:"itemTypeDisplayName"`
 	Redacted            bool              `json:"redacted"`
 	Blacklisted         bool              `json:"blacklisted"`
+
+	// IconWatermark is the season/expansion badge CDN path overlaid on the
+	// item icon; present on every weapon in the current manifest.
+	IconWatermark string `json:"iconWatermark"`
 
 	Inventory struct {
 		TierTypeName   string `json:"tierTypeName"`

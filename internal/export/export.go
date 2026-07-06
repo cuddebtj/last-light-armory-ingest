@@ -35,13 +35,15 @@ type Meta struct {
 	RollCount       int       `json:"roll_count"`
 }
 
-// Perk is one entry in perks.json.
+// Perk is one entry in perks.json. Icon is a CDN path relative to
+// https://www.bungie.net.
 type Perk struct {
-	Hash     int64  `json:"hash"`
-	Name     string `json:"name"`
-	Enhanced bool   `json:"enhanced"`
-	PvEScore *int16 `json:"pve_score"`
-	PvPScore *int16 `json:"pvp_score"`
+	Hash     int64   `json:"hash"`
+	Name     string  `json:"name"`
+	Enhanced bool    `json:"enhanced"`
+	Icon     *string `json:"icon"`
+	PvEScore *int16  `json:"pve_score"`
+	PvPScore *int16  `json:"pvp_score"`
 }
 
 // WeaponSummary is one entry in weapons/index.json: everything a list or
@@ -55,6 +57,8 @@ type WeaponSummary struct {
 	Tier        *string `json:"tier"`
 	Frame       *string `json:"frame"`
 	RPM         *int    `json:"rpm"`
+	Icon        *string `json:"icon"`      // CDN path relative to https://www.bungie.net
+	Watermark   *string `json:"watermark"` // season badge, overlaid on icon
 	Craftable   bool    `json:"craftable"`
 	Enhanceable bool    `json:"enhanceable"`
 	Obtainable  bool    `json:"obtainable"`
@@ -112,7 +116,7 @@ func Build(version string, now time.Time, weapons []models.Weapon, perks []db.Pe
 	}
 
 	for _, p := range perks {
-		site.Perks = append(site.Perks, Perk{Hash: p.Hash, Name: p.Name, Enhanced: p.Enhanced, PvEScore: p.PvEScore, PvPScore: p.PvPScore})
+		site.Perks = append(site.Perks, Perk{Hash: p.Hash, Name: p.Name, Enhanced: p.Enhanced, Icon: p.Icon, PvEScore: p.PvEScore, PvPScore: p.PvPScore})
 	}
 
 	for _, w := range weapons {
@@ -120,6 +124,7 @@ func Build(version string, now time.Time, weapons []models.Weapon, perks []db.Pe
 			WeaponSummary: WeaponSummary{
 				Hash: w.Hash, Name: w.Name, Type: w.WeaponType, Slot: w.Slot,
 				Element: w.Element, Tier: w.Tier, Frame: w.Frame, RPM: w.RPM,
+				Icon: w.Icon, Watermark: w.Watermark,
 				Craftable: w.Craftable, Enhanceable: w.Enhanceable, Obtainable: w.Obtainable,
 			},
 			Source:  w.Source,

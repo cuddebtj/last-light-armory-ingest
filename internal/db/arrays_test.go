@@ -10,8 +10,8 @@ func strPtr(s string) *string { return &s }
 func intPtr(i int) *int       { return &i }
 
 func TestPerkArrays(t *testing.T) {
-	hashes, names, enhanced := perkArrays([]models.Perk{
-		{Hash: 1, Name: "Rampage", Enhanced: false},
+	hashes, names, enhanced, icons := perkArrays([]models.Perk{
+		{Hash: 1, Name: "Rampage", Enhanced: false, Icon: strPtr("/icons/rampage.jpg")},
 		{Hash: 2, Name: "Rampage", Enhanced: true},
 	})
 	if len(hashes) != 2 || hashes[0] != 1 || hashes[1] != 2 {
@@ -23,6 +23,9 @@ func TestPerkArrays(t *testing.T) {
 	if enhanced[0] || !enhanced[1] {
 		t.Errorf("enhanced = %v", enhanced)
 	}
+	if icons[0] == nil || *icons[0] != "/icons/rampage.jpg" || icons[1] != nil {
+		t.Errorf("icons = %v", icons)
+	}
 }
 
 func TestWeaponArraysNullHandling(t *testing.T) {
@@ -31,6 +34,7 @@ func TestWeaponArraysNullHandling(t *testing.T) {
 			Hash: 10, Name: "Full", WeaponType: "Auto Rifle",
 			Frame: strPtr("Adaptive Frame"), RPM: intPtr(600), Slot: "Kinetic",
 			Element: strPtr("Arc"), Tier: strPtr("Legendary"), Source: strPtr("Source: X."),
+			Icon: strPtr("/icons/full.jpg"), Watermark: strPtr("/icons/wm.png"),
 			Craftable: true, Enhanceable: true, Obtainable: true,
 		},
 		{Hash: 11, Name: "Sparse", WeaponType: "Sword", Slot: "Power"},
@@ -45,8 +49,12 @@ func TestWeaponArraysNullHandling(t *testing.T) {
 	if a.rpms[0] == nil || *a.rpms[0] != 600 {
 		t.Errorf("rpms[0] = %v", a.rpms[0])
 	}
+	if a.icons[0] == nil || *a.icons[0] != "/icons/full.jpg" || a.watermarks[0] == nil {
+		t.Errorf("icons[0]/watermarks[0] = %v/%v", a.icons[0], a.watermarks[0])
+	}
 	// Sparse weapon: every nullable field must be nil, not zero-valued.
-	if a.frames[1] != nil || a.rpms[1] != nil || a.elements[1] != nil || a.tiers[1] != nil || a.sources[1] != nil {
+	if a.frames[1] != nil || a.rpms[1] != nil || a.elements[1] != nil || a.tiers[1] != nil ||
+		a.sources[1] != nil || a.icons[1] != nil || a.watermarks[1] != nil {
 		t.Errorf("sparse weapon nullables not nil: %+v", a)
 	}
 	if a.craftable[0] != true || a.craftable[1] != false {

@@ -1,0 +1,9 @@
+-- 000003_icons.down.sql
+
+BEGIN;
+
+ALTER TABLE perk   DROP COLUMN IF EXISTS icon;
+ALTER TABLE weapon DROP COLUMN IF EXISTS watermark;
+ALTER TABLE weapon DROP COLUMN IF EXISTS icon;
+
+COMMIT;

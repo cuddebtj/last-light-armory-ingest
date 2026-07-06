@@ -167,7 +167,8 @@ func (f *fakeStore) ReplaceRolls(ctx context.Context, weaponHash int64, rolls []
 // trait columns, and an origin column.
 func weaponJSON(name string, subType int) string {
 	return fmt.Sprintf(`{
-		"displayProperties": {"name": %q},
+		"displayProperties": {"name": %q, "icon": "/icons/weapon.jpg", "hasIcon": true},
+		"iconWatermark": "/icons/season.png",
 		"itemType": 3,
 		"itemSubType": %d,
 		"itemTypeDisplayName": "Auto Rifle",
@@ -192,7 +193,7 @@ func weaponJSON(name string, subType int) string {
 }
 
 func plugJSON(name, typeName string) string {
-	return fmt.Sprintf(`{"displayProperties":{"name":%q},"itemType":19,"itemTypeDisplayName":%q}`, name, typeName)
+	return fmt.Sprintf(`{"displayProperties":{"name":%q,"icon":"/icons/plug.jpg","hasIcon":true},"itemType":19,"itemTypeDisplayName":%q}`, name, typeName)
 }
 
 func plugSetJSON(entries ...[2]any) string {
@@ -272,6 +273,19 @@ func TestRunFullImport(t *testing.T) {
 	}
 	if w.Frame == nil || *w.Frame != "Adaptive Frame" {
 		t.Errorf("Frame = %v", w.Frame)
+	}
+	if w.Icon == nil || *w.Icon != "/icons/weapon.jpg" {
+		t.Errorf("Icon = %v", w.Icon)
+	}
+	if w.Watermark == nil || *w.Watermark != "/icons/season.png" {
+		t.Errorf("Watermark = %v", w.Watermark)
+	}
+
+	// Perk icons flow from the plug definitions into the stored pool.
+	for _, p := range store.perks {
+		if p.Icon == nil || *p.Icon != "/icons/plug.jpg" {
+			t.Errorf("perk %d icon = %v", p.Hash, p.Icon)
+		}
 	}
 
 	// Perk pool: barrel + 3 traits + 2 origins = 6 perks (intrinsic is not a column perk).

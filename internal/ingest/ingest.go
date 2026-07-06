@@ -246,6 +246,7 @@ func (r *Runner) download(ctx context.Context, manifest *bungie.Manifest, locale
 			plugs[hash] = categorize.PlugInfo{
 				Name:            def.DisplayProperties.Name,
 				TypeDisplayName: def.ItemTypeDisplayName,
+				Icon:            def.DisplayProperties.Icon,
 			}
 			if categorize.IsWeapon(&def) {
 				d := def

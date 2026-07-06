@@ -17,6 +17,8 @@ type Weapon struct {
 	Element     *string // damage type name
 	Tier        *string // e.g. "Legendary", "Exotic"
 	Source      *string // collectible sourceString when present
+	Icon        *string // CDN path relative to https://www.bungie.net
+	Watermark   *string // season/expansion badge CDN path, overlaid on Icon
 	Craftable   bool
 	Enhanceable bool
 	Obtainable  bool
@@ -26,7 +28,8 @@ type Weapon struct {
 type Perk struct {
 	Hash     int64
 	Name     string
-	Enhanced bool // enhanced-trait variant of a base perk
+	Enhanced bool    // enhanced-trait variant of a base perk
+	Icon     *string // CDN path relative to https://www.bungie.net
 }
 
 // PerkColumn is one perk column on a weapon: the set of perks that can roll

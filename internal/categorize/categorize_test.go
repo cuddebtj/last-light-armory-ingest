@@ -83,7 +83,7 @@ func baseLookups() *Lookups {
 			10: {Name: "Adaptive Frame", TypeDisplayName: "Intrinsic"},
 			20: {Name: "Arrowhead Brake", TypeDisplayName: "Barrel"},
 			21: {Name: "Chambered Compensator", TypeDisplayName: "Barrel"},
-			30: {Name: "Zen Moment", TypeDisplayName: "Trait"},
+			30: {Name: "Zen Moment", TypeDisplayName: "Trait", Icon: "/common/icons/zen.jpg"},
 			31: {Name: "Rampage", TypeDisplayName: "Trait"},
 			32: {Name: "Zen Moment", TypeDisplayName: "Enhanced Trait"},
 			33: {Name: "Rampage", TypeDisplayName: "Enhanced Trait"},
@@ -124,6 +124,8 @@ func TestWeaponFieldDerivation(t *testing.T) {
 		socket(bungie.SocketCategoryIntrinsic, bungie.SocketEntry{SingleInitialItemHash: 10})
 	b.def.DefaultDamageTypeHash = 3373582085
 	b.def.CollectibleHash = 900
+	b.def.DisplayProperties.Icon = "/common/icons/fp.jpg"
+	b.def.IconWatermark = "/common/icons/season.png"
 
 	w := Weapon(1690783811, &b.def, lk, nil)
 
@@ -156,6 +158,18 @@ func TestWeaponFieldDerivation(t *testing.T) {
 	}
 	if w.Craftable || w.Enhanceable {
 		t.Errorf("Craftable/Enhanceable = %v/%v, want false/false", w.Craftable, w.Enhanceable)
+	}
+	if w.Icon == nil || *w.Icon != "/common/icons/fp.jpg" {
+		t.Errorf("Icon = %v", w.Icon)
+	}
+	if w.Watermark == nil || *w.Watermark != "/common/icons/season.png" {
+		t.Errorf("Watermark = %v", w.Watermark)
+	}
+
+	// A weapon without icon fields keeps them nil.
+	bare := Weapon(2, &newWeaponDef("Bare").def, lk, nil)
+	if bare.Icon != nil || bare.Watermark != nil {
+		t.Errorf("bare icon/watermark = %v/%v, want nil/nil", bare.Icon, bare.Watermark)
 	}
 }
 
@@ -294,6 +308,13 @@ func TestPerkColumns(t *testing.T) {
 	}
 	if !cols[1].Perks[1].Enhanced {
 		t.Error("col1 enhanced perk not flagged")
+	}
+	// Perk 30 (Zen Moment) carries its icon; perk 32 has none in lookups.
+	if cols[1].Perks[0].Icon == nil || *cols[1].Perks[0].Icon != "/common/icons/zen.jpg" {
+		t.Errorf("perk icon = %v", cols[1].Perks[0].Icon)
+	}
+	if cols[1].Perks[1].Icon != nil {
+		t.Errorf("iconless perk icon = %v, want nil", cols[1].Perks[1].Icon)
 	}
 	// Column 2: only the rollable base trait survives (33 can't roll).
 	if len(cols[2].Perks) != 1 || cols[2].Perks[0].Hash != 31 {

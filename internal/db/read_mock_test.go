@@ -23,14 +23,14 @@ func TestReadQueriesErrorPaths(t *testing.T) {
 	}{
 		{
 			"AllWeapons", "FROM weapon ORDER BY hash",
-			[]string{"hash", "name", "weapon_type", "frame", "rpm", "slot", "element", "tier", "source", "craftable", "enhanceable", "obtainable"},
-			[]any{"not-an-int", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+			[]string{"hash", "name", "weapon_type", "frame", "rpm", "slot", "element", "tier", "source", "icon", "watermark", "craftable", "enhanceable", "obtainable"},
+			[]any{"not-an-int", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
 			func(s *Store) error { _, err := s.AllWeapons(ctx); return err },
 		},
 		{
 			"AllPerks", "FROM perk ORDER BY hash",
-			[]string{"hash", "name", "enhanced", "pve_score", "pvp_score"},
-			[]any{"not-an-int", nil, nil, nil, nil},
+			[]string{"hash", "name", "enhanced", "icon", "pve_score", "pvp_score"},
+			[]any{"not-an-int", nil, nil, nil, nil, nil},
 			func(s *Store) error { _, err := s.AllPerks(ctx); return err },
 		},
 		{
@@ -72,9 +72,9 @@ func TestReadQueriesErrorPaths(t *testing.T) {
 func TestReadQueriesRowIterationError(t *testing.T) {
 	mock, store := newMock(t)
 	mock.ExpectQuery("FROM perk ORDER BY hash").WillReturnRows(
-		pgxmock.NewRows([]string{"hash", "name", "enhanced", "pve_score", "pvp_score"}).
-			AddRow(int64(1), "Zen Moment", false, nil, nil).
-			AddRow(int64(2), "Rampage", false, nil, nil).
+		pgxmock.NewRows([]string{"hash", "name", "enhanced", "icon", "pve_score", "pvp_score"}).
+			AddRow(int64(1), "Zen Moment", false, nil, nil, nil).
+			AddRow(int64(2), "Rampage", false, nil, nil, nil).
 			RowError(1, errBoom))
 	if _, err := store.AllPerks(context.Background()); err == nil {
 		t.Error("want rows iteration error")

@@ -7,16 +7,18 @@ import "github.com/cuddebtj/last-light-armory-ingest/internal/models"
 // without a database.
 
 // perkArrays flattens perks into parallel unnest arrays.
-func perkArrays(perks []models.Perk) (hashes []int64, names []string, enhanced []bool) {
+func perkArrays(perks []models.Perk) (hashes []int64, names []string, enhanced []bool, icons []*string) {
 	hashes = make([]int64, len(perks))
 	names = make([]string, len(perks))
 	enhanced = make([]bool, len(perks))
+	icons = make([]*string, len(perks))
 	for i, p := range perks {
 		hashes[i] = p.Hash
 		names[i] = p.Name
 		enhanced[i] = p.Enhanced
+		icons[i] = p.Icon
 	}
-	return hashes, names, enhanced
+	return hashes, names, enhanced, icons
 }
 
 // weaponArrayArgs carries the parallel arrays for the weapon upsert.
@@ -31,6 +33,8 @@ type weaponArrayArgs struct {
 	elements    []*string
 	tiers       []*string
 	sources     []*string
+	icons       []*string
+	watermarks  []*string
 	craftable   []bool
 	enhanceable []bool
 	obtainable  []bool
@@ -49,6 +53,8 @@ func weaponArrays(weapons []models.Weapon) weaponArrayArgs {
 		elements:    make([]*string, n),
 		tiers:       make([]*string, n),
 		sources:     make([]*string, n),
+		icons:       make([]*string, n),
+		watermarks:  make([]*string, n),
 		craftable:   make([]bool, n),
 		enhanceable: make([]bool, n),
 		obtainable:  make([]bool, n),
@@ -66,6 +72,8 @@ func weaponArrays(weapons []models.Weapon) weaponArrayArgs {
 		a.elements[i] = w.Element
 		a.tiers[i] = w.Tier
 		a.sources[i] = w.Source
+		a.icons[i] = w.Icon
+		a.watermarks[i] = w.Watermark
 		a.craftable[i] = w.Craftable
 		a.enhanceable[i] = w.Enhanceable
 		a.obtainable[i] = w.Obtainable

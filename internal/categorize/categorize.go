@@ -31,10 +31,11 @@ const (
 
 // PlugInfo is the minimal information retained for every plug item (perks,
 // intrinsics) while streaming the 200 MB item table: just enough to name a
-// perk and classify its column.
+// perk, classify its column, and render its icon.
 type PlugInfo struct {
 	Name            string
 	TypeDisplayName string
+	Icon            string // CDN path; empty when the plug has no icon
 }
 
 // Lookups bundles the cross-definition tables needed to categorize one
@@ -86,6 +87,14 @@ func Weapon(hash uint32, def *bungie.InventoryItemDefinition, lk *Lookups, perkC
 	}
 	if rpm, ok := speedStat(def); ok {
 		w.RPM = &rpm
+	}
+	if def.DisplayProperties.Icon != "" {
+		icon := def.DisplayProperties.Icon
+		w.Icon = &icon
+	}
+	if def.IconWatermark != "" {
+		wm := def.IconWatermark
+		w.Watermark = &wm
 	}
 
 	// Obtainable heuristic v1 + source string, both from the collectible.
@@ -150,11 +159,16 @@ func PerkColumns(def *bungie.InventoryItemDefinition, lk *Lookups) []models.Perk
 			if !ok || info.Name == "" {
 				continue
 			}
-			col.Perks = append(col.Perks, models.Perk{
+			perk := models.Perk{
 				Hash:     int64(item.PlugItemHash),
 				Name:     info.Name,
 				Enhanced: info.TypeDisplayName == plugTypeEnhancedTrait,
-			})
+			}
+			if info.Icon != "" {
+				icon := info.Icon
+				perk.Icon = &icon
+			}
+			col.Perks = append(col.Perks, perk)
 			switch info.TypeDisplayName {
 			case plugTypeTrait, plugTypeEnhancedTrait:
 				col.Kind = models.KindTrait

@@ -26,11 +26,12 @@ func fixture() ([]models.Weapon, []db.PerkRow, []db.WeaponPerkRow, []db.RollPerk
 		{Hash: 1000, Name: "Test Rifle", WeaponType: "Auto Rifle", Slot: "Kinetic",
 			Element: strPtr("Arc"), Tier: strPtr("Legendary"), Frame: strPtr("Adaptive Frame"),
 			RPM: intPtr(600), Craftable: true, Enhanceable: true, Obtainable: true,
-			Source: strPtr("Source: Testing.")},
+			Source: strPtr("Source: Testing."),
+			Icon:   strPtr("/icons/rifle.jpg"), Watermark: strPtr("/icons/season.png")},
 		{Hash: 1001, Name: "Bare Sword", WeaponType: "Sword", Slot: "Power"},
 	}
 	perks := []db.PerkRow{
-		{Hash: 30, Name: "Zen Moment", PvEScore: i16Ptr(8)},
+		{Hash: 30, Name: "Zen Moment", Icon: strPtr("/icons/zen.jpg"), PvEScore: i16Ptr(8)},
 		{Hash: 31, Name: "Rampage"},
 		{Hash: 40, Name: "Veist Stinger"},
 	}
@@ -64,6 +65,15 @@ func TestBuildAssemblesSite(t *testing.T) {
 	}
 	if len(site.Perks) != 3 || site.Perks[0].PvEScore == nil || *site.Perks[0].PvEScore != 8 {
 		t.Errorf("perks = %+v", site.Perks)
+	}
+	if site.Perks[0].Icon == nil || *site.Perks[0].Icon != "/icons/zen.jpg" || site.Perks[1].Icon != nil {
+		t.Errorf("perk icons = %+v", site.Perks[:2])
+	}
+	if site.Index[0].Icon == nil || *site.Index[0].Icon != "/icons/rifle.jpg" {
+		t.Errorf("index icon = %v", site.Index[0].Icon)
+	}
+	if site.Index[0].Watermark == nil || *site.Index[0].Watermark != "/icons/season.png" {
+		t.Errorf("index watermark = %v", site.Index[0].Watermark)
 	}
 	if len(site.Index) != 2 || len(site.Docs) != 2 {
 		t.Fatalf("index/docs = %d/%d", len(site.Index), len(site.Docs))

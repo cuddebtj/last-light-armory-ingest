@@ -19,6 +19,7 @@ type PerkRow struct {
 	Hash     int64
 	Name     string
 	Enhanced bool
+	Icon     *string
 	PvEScore *int16
 	PvPScore *int16
 }
@@ -70,12 +71,13 @@ func queryAll[T any](ctx context.Context, q Querier, sql string, scan func(pgx.R
 func (s *Store) AllWeapons(ctx context.Context) ([]models.Weapon, error) {
 	return queryAll(ctx, s.pool, `
 		SELECT hash, name, weapon_type, frame, rpm, slot, element, tier, source,
-		       craftable, enhanceable, obtainable
+		       icon, watermark, craftable, enhanceable, obtainable
 		FROM weapon ORDER BY hash`,
 		func(rows pgx.Rows) (models.Weapon, error) {
 			var w models.Weapon
 			err := rows.Scan(&w.Hash, &w.Name, &w.WeaponType, &w.Frame, &w.RPM, &w.Slot,
-				&w.Element, &w.Tier, &w.Source, &w.Craftable, &w.Enhanceable, &w.Obtainable)
+				&w.Element, &w.Tier, &w.Source, &w.Icon, &w.Watermark,
+				&w.Craftable, &w.Enhanceable, &w.Obtainable)
 			return w, err
 		})
 }
@@ -83,11 +85,11 @@ func (s *Store) AllWeapons(ctx context.Context) ([]models.Weapon, error) {
 // AllPerks returns every perk (with curated scores, read-only) ordered by hash.
 func (s *Store) AllPerks(ctx context.Context) ([]PerkRow, error) {
 	return queryAll(ctx, s.pool, `
-		SELECT hash, name, enhanced, pve_score, pvp_score
+		SELECT hash, name, enhanced, icon, pve_score, pvp_score
 		FROM perk ORDER BY hash`,
 		func(rows pgx.Rows) (PerkRow, error) {
 			var p PerkRow
-			err := rows.Scan(&p.Hash, &p.Name, &p.Enhanced, &p.PvEScore, &p.PvPScore)
+			err := rows.Scan(&p.Hash, &p.Name, &p.Enhanced, &p.Icon, &p.PvEScore, &p.PvPScore)
 			return p, err
 		})
 }

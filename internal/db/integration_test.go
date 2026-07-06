@@ -117,7 +117,8 @@ func sampleWeapons() []models.Weapon {
 			Hash: 1000, Name: "Integration Rifle", WeaponType: "Auto Rifle",
 			Frame: strPtr("Adaptive Frame"), RPM: intPtr(600), Slot: "Kinetic",
 			Element: strPtr("Kinetic"), Tier: strPtr("Legendary"),
-			Source:    strPtr("Source: Integration testing."),
+			Source: strPtr("Source: Integration testing."),
+			Icon:   strPtr("/icons/rifle.jpg"), Watermark: strPtr("/icons/season.png"),
 			Craftable: true, Enhanceable: true, Obtainable: true,
 		},
 		{Hash: 1001, Name: "Sparse Sword", WeaponType: "Sword", Slot: "Power"},
@@ -126,7 +127,7 @@ func sampleWeapons() []models.Weapon {
 
 func samplePerks() []models.Perk {
 	return []models.Perk{
-		{Hash: 30, Name: "Zen Moment"},
+		{Hash: 30, Name: "Zen Moment", Icon: strPtr("/icons/zen.jpg")},
 		{Hash: 31, Name: "Rampage"},
 		{Hash: 32, Name: "Zen Moment", Enhanced: true},
 		{Hash: 40, Name: "Veist Stinger"},
@@ -489,6 +490,12 @@ func TestReadQueriesRoundTrip(t *testing.T) {
 	if weapons[0].Frame == nil || *weapons[0].Frame != "Adaptive Frame" || weapons[1].Frame != nil {
 		t.Errorf("frames round-trip wrong: %+v", weapons)
 	}
+	if weapons[0].Icon == nil || *weapons[0].Icon != "/icons/rifle.jpg" || weapons[1].Icon != nil {
+		t.Errorf("icons round-trip wrong: %+v", weapons)
+	}
+	if weapons[0].Watermark == nil || *weapons[0].Watermark != "/icons/season.png" {
+		t.Errorf("watermark round-trip wrong: %v", weapons[0].Watermark)
+	}
 
 	perks, err := env.store.AllPerks(ctx)
 	if err != nil {
@@ -496,6 +503,9 @@ func TestReadQueriesRoundTrip(t *testing.T) {
 	}
 	if len(perks) != 4 || perks[0].Hash != 30 || perks[0].PvEScore != nil {
 		t.Errorf("perks = %+v", perks)
+	}
+	if perks[0].Icon == nil || *perks[0].Icon != "/icons/zen.jpg" || perks[1].Icon != nil {
+		t.Errorf("perk icons round-trip wrong: %+v", perks[:2])
 	}
 
 	links, err := env.store.AllWeaponPerks(ctx)
