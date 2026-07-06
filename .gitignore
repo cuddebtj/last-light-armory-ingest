@@ -31,3 +31,7 @@ go.work.sum
 # .idea/
 # .vscode/
  .claude/*
+
+# Export artifacts (regenerate with `go run ./cmd/export -out ./data`).
+# These get copied/published into the website repo, not committed here.
+data/
