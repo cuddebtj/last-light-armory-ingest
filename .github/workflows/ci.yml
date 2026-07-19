@@ -1,0 +1,46 @@
+# CI: formatting, vet, staticcheck, and the unit test suite with the race
+# detector. Integration tests are deliberately absent — they need the
+# Postgres server, which lives on a private network unreachable from GitHub
+# runners; run them locally with `go test -tags integration ./internal/db/`.
+name: ci
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "unformatted files:" && echo "$out" && exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: staticcheck
+        uses: dominikh/staticcheck-action@v1
+        with:
+          version: latest
+          install-go: false
+
+      - name: unit tests (race)
+        run: go test -race ./...
+
+      - name: build all binaries
+        run: go build ./...
