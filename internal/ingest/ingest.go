@@ -41,6 +41,7 @@ const (
 	componentPlugSet       = "DestinyPlugSetDefinition"
 	componentDamageType    = "DestinyDamageTypeDefinition"
 	componentCollectible   = "DestinyCollectibleDefinition"
+	componentBreakerType   = "DestinyBreakerTypeDefinition"
 )
 
 // ManifestAPI is the slice of the Bungie client the pipeline needs.
@@ -198,7 +199,7 @@ func (r *Runner) Run(ctx context.Context) (*Summary, error) {
 // point after which everything is read-only.
 func (r *Runner) download(ctx context.Context, manifest *bungie.Manifest, locale string, log *slog.Logger) (*categorize.Lookups, map[uint32]*bungie.InventoryItemDefinition, error) {
 	paths := map[string]string{}
-	for _, name := range []string{componentInventoryItem, componentPlugSet, componentDamageType, componentCollectible} {
+	for _, name := range []string{componentInventoryItem, componentPlugSet, componentDamageType, componentCollectible, componentBreakerType} {
 		p, ok := manifest.ComponentPath(locale, name)
 		if !ok {
 			return nil, nil, fmt.Errorf("ingest: manifest has no %s path for locale %q", name, locale)
@@ -218,6 +219,15 @@ func (r *Runner) download(ctx context.Context, manifest *bungie.Manifest, locale
 			return nil
 		})
 		lookups.DamageTypes = m
+		return err
+	})
+	g.Go(func() error {
+		m := map[uint32]string{}
+		err := streamComponent(gctx, r.API, paths[componentBreakerType], func(hash uint32, def bungie.BreakerTypeDefinition) error {
+			m[hash] = def.DisplayProperties.Name
+			return nil
+		})
+		lookups.BreakerTypes = m
 		return err
 	})
 	g.Go(func() error {
@@ -266,6 +276,7 @@ func (r *Runner) download(ctx context.Context, manifest *bungie.Manifest, locale
 		"plug_sets", len(lookups.PlugSets),
 		"collectibles", len(lookups.Collectibles),
 		"damage_types", len(lookups.DamageTypes),
+		"breaker_types", len(lookups.BreakerTypes),
 	)
 	return lookups, weapons, nil
 }

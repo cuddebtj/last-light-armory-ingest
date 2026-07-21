@@ -73,6 +73,9 @@ func baseLookups() *Lookups {
 			3373582085: "Kinetic",
 			2303181850: "Arc",
 		},
+		BreakerTypes: map[uint32]string{
+			485622768: "Shield Piercing",
+		},
 		Collectibles: map[uint32]bungie.CollectibleDefinition{
 			900: {SourceString: "Source: The Vault of Tests."},
 			901: {Redacted: true},
@@ -126,6 +129,8 @@ func TestWeaponFieldDerivation(t *testing.T) {
 	b.def.CollectibleHash = 900
 	b.def.DisplayProperties.Icon = "/common/icons/fp.jpg"
 	b.def.IconWatermark = "/common/icons/season.png"
+	b.def.EquippingBlock.AmmoType = 1
+	b.def.BreakerTypeHash = 485622768
 
 	w := Weapon(1690783811, &b.def, lk, nil)
 
@@ -165,11 +170,58 @@ func TestWeaponFieldDerivation(t *testing.T) {
 	if w.Watermark == nil || *w.Watermark != "/common/icons/season.png" {
 		t.Errorf("Watermark = %v", w.Watermark)
 	}
+	if w.AmmoType == nil || *w.AmmoType != "Primary" {
+		t.Errorf("AmmoType = %v", w.AmmoType)
+	}
+	if w.BreakerType == nil || *w.BreakerType != "Shield Piercing" {
+		t.Errorf("BreakerType = %v", w.BreakerType)
+	}
 
-	// A weapon without icon fields keeps them nil.
+	// A weapon without icon/ammo/breaker fields keeps them nil.
 	bare := Weapon(2, &newWeaponDef("Bare").def, lk, nil)
 	if bare.Icon != nil || bare.Watermark != nil {
 		t.Errorf("bare icon/watermark = %v/%v, want nil/nil", bare.Icon, bare.Watermark)
+	}
+	if bare.AmmoType != nil || bare.BreakerType != nil {
+		t.Errorf("bare ammo/breaker = %v/%v, want nil/nil", bare.AmmoType, bare.BreakerType)
+	}
+}
+
+func TestWeaponAmmoTypeMapping(t *testing.T) {
+	lk := baseLookups()
+	tests := []struct {
+		ammoType int
+		want     string
+	}{
+		{0, ""},        // None: never a real weapon in practice, stays nil
+		{1, "Primary"}, // verified live: Fatebringer
+		{2, "Special"}, // verified live: Eriana's Vow
+		{3, "Heavy"},   // verified live: Gjallarhorn
+		{99, ""},       // unrecognized future value: stays nil, not "Unknown"
+	}
+	for _, tt := range tests {
+		b := newWeaponDef("Ammo Test")
+		b.def.EquippingBlock.AmmoType = tt.ammoType
+		w := Weapon(1, &b.def, lk, nil)
+		if tt.want == "" {
+			if w.AmmoType != nil {
+				t.Errorf("ammoType %d: AmmoType = %v, want nil", tt.ammoType, *w.AmmoType)
+			}
+			continue
+		}
+		if w.AmmoType == nil || *w.AmmoType != tt.want {
+			t.Errorf("ammoType %d: AmmoType = %v, want %q", tt.ammoType, w.AmmoType, tt.want)
+		}
+	}
+}
+
+func TestWeaponBreakerTypeUnresolvedHashStaysNil(t *testing.T) {
+	lk := baseLookups()
+	b := newWeaponDef("Unresolved Breaker")
+	b.def.BreakerTypeHash = 999999999 // not in lk.BreakerTypes
+	w := Weapon(1, &b.def, lk, nil)
+	if w.BreakerType != nil {
+		t.Errorf("BreakerType = %v, want nil for an unresolved hash", *w.BreakerType)
 	}
 }
 

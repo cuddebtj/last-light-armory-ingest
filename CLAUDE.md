@@ -1,6 +1,6 @@
 # last-light-armory-ingest
 
-_Last updated: 2026-07-06 — update this line whenever the file changes materially._
+_Last updated: 2026-07-21 — update this line whenever the file changes materially._
 
 ## What This Repo Is
 
@@ -182,6 +182,31 @@ differs in these ways:
 - `roll` gained `combo_key TEXT` with `UNIQUE (weapon_id, combo_key)` —
   without a natural key, re-ingestion would duplicate rolls
 - indexes on `weapon_perk(perk_id)` and `roll_perk(perk_id)`
+- `weapon` gained `icon TEXT`, `watermark TEXT` (migration 000003)
+- `weapon` gained `ammo_type TEXT` and `breaker_type TEXT` (migration 000004,
+  2026-07-21) — closes a data gap last-light-armory's CLAUDE.md flagged for
+  its advanced-filtering work. Both are Bungie identity facts:
+  `equippingBlock.ammoType` (DestinyAmmunitionType: 1 Primary, 2 Special, 3
+  Heavy — every real weapon has a non-zero value, verified live against
+  2,208/2,208 weapons) and `breakerType`/`breakerTypeHash` on
+  `DestinyInventoryItemDefinition`, resolved via
+  `DestinyBreakerTypeDefinition` (e.g. hash 485622768 → "Shield Piercing" =
+  anti-Barrier). Confirmed live that **slot is not a valid ammo-type
+  proxy**: Eriana's Vow is Special ammo in the Energy slot (Energy holds
+  both primaries and specials). Only 17/2208 weapons have a non-null
+  `breaker_type` — an intrinsic capability, not the common case; most
+  champion-stun capability in this game comes from perks (Voltshot,
+  Chill Clip, Incandescent, ...), which is curated verb knowledge that
+  belongs in last-light-armory's scoring job, not here (see that repo's
+  CLAUDE.md, "Champion/breaker capability: two distinct sources").
+- `cmd/export`'s `weapons/index.json` entries gained a `columns` field
+  (the same per-column perk-hash pool as the `<hash>.json` detail
+  document) — previously only on the detail document, which meant
+  client-side perk filtering needed every weapon's detail file just to
+  know its perk pool. Verified live: adds roughly 3.3 MB raw to
+  `index.json` (4.37 MB vs. an earlier ~1 MB estimate — pretty-printed
+  JSON's indentation inflates raw size more than first assumed) but
+  gzips to 432 KB, which is what actually crosses the wire.
 
 ```sql
 CREATE TABLE manifest_sync_state (

@@ -44,6 +44,9 @@ type PlugInfo struct {
 type Lookups struct {
 	// DamageTypes maps DestinyDamageTypeDefinition hash -> display name.
 	DamageTypes map[uint32]string
+	// BreakerTypes maps DestinyBreakerTypeDefinition hash -> display name
+	// (e.g. 485622768 -> "Shield Piercing").
+	BreakerTypes map[uint32]string
 	// Collectibles maps DestinyCollectibleDefinition hash -> definition.
 	Collectibles map[uint32]bungie.CollectibleDefinition
 	// PlugSets maps DestinyPlugSetDefinition hash -> definition.
@@ -95,6 +98,14 @@ func Weapon(hash uint32, def *bungie.InventoryItemDefinition, lk *Lookups, perkC
 	if def.IconWatermark != "" {
 		wm := def.IconWatermark
 		w.Watermark = &wm
+	}
+	if name := ammoTypeName(def.EquippingBlock.AmmoType); name != "" {
+		w.AmmoType = &name
+	}
+	if def.BreakerTypeHash != 0 {
+		if name, ok := lk.BreakerTypes[def.BreakerTypeHash]; ok && name != "" {
+			w.BreakerType = &name
+		}
 	}
 
 	// Obtainable heuristic v1 + source string, both from the collectible.
@@ -293,5 +304,23 @@ func slotName(bucket uint32) string {
 		return "Power"
 	default:
 		return "Unknown"
+	}
+}
+
+// ammoTypeName maps DestinyAmmunitionType to its human name. Unlike
+// slotName, an unresolved value (0 = None, or anything unrecognized)
+// returns "" so the caller leaves Weapon.AmmoType nil rather than storing a
+// misleading "Unknown" — every real weapon has a real ammo type; 0 only
+// occurs on non-equippable items that never reach categorize.Weapon.
+func ammoTypeName(ammoType int) string {
+	switch ammoType {
+	case 1:
+		return "Primary"
+	case 2:
+		return "Special"
+	case 3:
+		return "Heavy"
+	default:
+		return ""
 	}
 }

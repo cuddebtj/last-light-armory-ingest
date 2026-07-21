@@ -237,6 +237,7 @@ func newFixtureAPI(version string) *fakeAPI {
 				plugSetJSON([2]any{40, true}, [2]any{41, true})),
 			componentDamageType:  `{"3373582085": {"displayProperties": {"name": "Kinetic"}}}`,
 			componentCollectible: `{"900": {"sourceString": "Source: Testing."}}`,
+			componentBreakerType: `{"485622768": {"displayProperties": {"name": "Shield Piercing"}}}`,
 		},
 	}
 }

@@ -27,7 +27,8 @@ func fixture() ([]models.Weapon, []db.PerkRow, []db.WeaponPerkRow, []db.RollPerk
 			Element: strPtr("Arc"), Tier: strPtr("Legendary"), Frame: strPtr("Adaptive Frame"),
 			RPM: intPtr(600), Craftable: true, Enhanceable: true, Obtainable: true,
 			Source: strPtr("Source: Testing."),
-			Icon:   strPtr("/icons/rifle.jpg"), Watermark: strPtr("/icons/season.png")},
+			Icon:   strPtr("/icons/rifle.jpg"), Watermark: strPtr("/icons/season.png"),
+			AmmoType: strPtr("Primary"), BreakerType: strPtr("Shield Piercing")},
 		{Hash: 1001, Name: "Bare Sword", WeaponType: "Sword", Slot: "Power"},
 	}
 	perks := []db.PerkRow{
@@ -75,6 +76,15 @@ func TestBuildAssemblesSite(t *testing.T) {
 	if site.Index[0].Watermark == nil || *site.Index[0].Watermark != "/icons/season.png" {
 		t.Errorf("index watermark = %v", site.Index[0].Watermark)
 	}
+	if site.Index[0].AmmoType == nil || *site.Index[0].AmmoType != "Primary" {
+		t.Errorf("index ammo_type = %v", site.Index[0].AmmoType)
+	}
+	if site.Index[0].BreakerType == nil || *site.Index[0].BreakerType != "Shield Piercing" {
+		t.Errorf("index breaker_type = %v", site.Index[0].BreakerType)
+	}
+	if site.Index[1].AmmoType != nil || site.Index[1].BreakerType != nil {
+		t.Errorf("bare sword ammo/breaker = %v/%v, want nil/nil", site.Index[1].AmmoType, site.Index[1].BreakerType)
+	}
 	if len(site.Index) != 2 || len(site.Docs) != 2 {
 		t.Fatalf("index/docs = %d/%d", len(site.Index), len(site.Docs))
 	}
@@ -85,6 +95,13 @@ func TestBuildAssemblesSite(t *testing.T) {
 	}
 	if len(rifle.Columns) != 2 || rifle.Columns[0].Index != 0 || len(rifle.Columns[0].Perks) != 2 || rifle.Columns[1].Index != 3 {
 		t.Errorf("rifle columns = %+v", rifle.Columns)
+	}
+	// The whole point of the 2026-07-21 export-shape change: index.json's
+	// summary carries the same perk-pool columns as the detail document,
+	// not just a roll count, so client-side perk filtering doesn't need to
+	// fetch every weapon's detail file.
+	if len(site.Index[0].Columns) != 2 || site.Index[0].Columns[0].Index != 0 || len(site.Index[0].Columns[0].Perks) != 2 {
+		t.Errorf("index columns = %+v, want same shape as detail doc", site.Index[0].Columns)
 	}
 	// Rolls sorted by combo key, not database row order (5 came before 7).
 	if rifle.Rolls[0].Key != "aaa" || rifle.Rolls[1].Key != "bbb" {

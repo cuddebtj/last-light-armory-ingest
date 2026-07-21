@@ -35,6 +35,7 @@ func TestWeaponArraysNullHandling(t *testing.T) {
 			Frame: strPtr("Adaptive Frame"), RPM: intPtr(600), Slot: "Kinetic",
 			Element: strPtr("Arc"), Tier: strPtr("Legendary"), Source: strPtr("Source: X."),
 			Icon: strPtr("/icons/full.jpg"), Watermark: strPtr("/icons/wm.png"),
+			AmmoType: strPtr("Primary"), BreakerType: strPtr("Shield Piercing"),
 			Craftable: true, Enhanceable: true, Obtainable: true,
 		},
 		{Hash: 11, Name: "Sparse", WeaponType: "Sword", Slot: "Power"},
@@ -52,9 +53,13 @@ func TestWeaponArraysNullHandling(t *testing.T) {
 	if a.icons[0] == nil || *a.icons[0] != "/icons/full.jpg" || a.watermarks[0] == nil {
 		t.Errorf("icons[0]/watermarks[0] = %v/%v", a.icons[0], a.watermarks[0])
 	}
+	if a.ammoTypes[0] == nil || *a.ammoTypes[0] != "Primary" || a.breakerTypes[0] == nil || *a.breakerTypes[0] != "Shield Piercing" {
+		t.Errorf("ammoTypes[0]/breakerTypes[0] = %v/%v", a.ammoTypes[0], a.breakerTypes[0])
+	}
 	// Sparse weapon: every nullable field must be nil, not zero-valued.
 	if a.frames[1] != nil || a.rpms[1] != nil || a.elements[1] != nil || a.tiers[1] != nil ||
-		a.sources[1] != nil || a.icons[1] != nil || a.watermarks[1] != nil {
+		a.sources[1] != nil || a.icons[1] != nil || a.watermarks[1] != nil ||
+		a.ammoTypes[1] != nil || a.breakerTypes[1] != nil {
 		t.Errorf("sparse weapon nullables not nil: %+v", a)
 	}
 	if a.craftable[0] != true || a.craftable[1] != false {
