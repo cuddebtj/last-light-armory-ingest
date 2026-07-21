@@ -21,7 +21,7 @@ var testTime = time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC)
 
 // fixture returns inputs describing two weapons: 1000 with two perk columns
 // and two rolls, 1001 with nothing.
-func fixture() ([]models.Weapon, []db.PerkRow, []db.WeaponPerkRow, []db.RollPerkRow) {
+func fixture() ([]models.Weapon, []db.PerkRow, []db.WeaponPerkRow, []db.RollPerkRow, []db.WeaponRankingRow) {
 	weapons := []models.Weapon{
 		{Hash: 1000, Name: "Test Rifle", WeaponType: "Auto Rifle", Slot: "Kinetic",
 			Element: strPtr("Arc"), Tier: strPtr("Legendary"), Frame: strPtr("Adaptive Frame"),
@@ -48,12 +48,17 @@ func fixture() ([]models.Weapon, []db.PerkRow, []db.WeaponPerkRow, []db.RollPerk
 		// combo "bbb" (roll id 5): one perk; unscored.
 		{WeaponHash: 1000, RollID: 5, ComboKey: "bbb", ColumnIndex: 0, PerkHash: 31},
 	}
-	return weapons, perks, links, rollRows
+	rankings := []db.WeaponRankingRow{
+		// weapon 1001 (Bare Sword) deliberately has no ranking row, same
+		// as a real zero-roll weapon never getting one.
+		{WeaponHash: 1000, OverallScore: f64Ptr(9.1), PvEScore: f64Ptr(9.5), PvPScore: f64Ptr(8.7)},
+	}
+	return weapons, perks, links, rollRows, rankings
 }
 
 func TestBuildAssemblesSite(t *testing.T) {
-	weapons, perks, links, rollRows := fixture()
-	site, err := Build("v-test", testTime, weapons, perks, links, rollRows)
+	weapons, perks, links, rollRows, rankings := fixture()
+	site, err := Build("v-test", testTime, weapons, perks, links, rollRows, rankings)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -113,20 +118,36 @@ func TestBuildAssemblesSite(t *testing.T) {
 	if rifle.Rolls[1].Overall != nil {
 		t.Errorf("roll bbb overall = %v, want nil", rifle.Rolls[1].Overall)
 	}
+	if rifle.OverallScore == nil || *rifle.OverallScore != 9.1 ||
+		rifle.PvEScore == nil || *rifle.PvEScore != 9.5 ||
+		rifle.PvPScore == nil || *rifle.PvPScore != 8.7 {
+		t.Errorf("rifle ranking = %+v", rifle.WeaponSummary)
+	}
+	if rifle.PopularityScore != nil {
+		t.Errorf("rifle popularity_score = %v, want nil (phase 6 not started)", rifle.PopularityScore)
+	}
+	if site.Index[0].OverallScore == nil || *site.Index[0].OverallScore != 9.1 {
+		t.Errorf("index overall_score = %v", site.Index[0].OverallScore)
+	}
 
 	sword := site.Docs[1]
 	if sword.Hash != 1001 || len(sword.Columns) != 0 || len(sword.Rolls) != 0 || sword.RollCount != 0 {
 		t.Errorf("sword doc = %+v", sword)
 	}
+	// No weapon_ranking row for a zero-roll weapon is expected, not an
+	// error — ranking fields simply stay nil.
+	if sword.OverallScore != nil || sword.PvEScore != nil || sword.PvPScore != nil || sword.PopularityScore != nil {
+		t.Errorf("sword ranking = %+v, want all nil", sword.WeaponSummary)
+	}
 }
 
 func TestBuildRejectsOrphanRows(t *testing.T) {
-	weapons, perks, links, rollRows := fixture()
+	weapons, perks, links, rollRows, rankings := fixture()
 
 	t.Run("orphan link", func(t *testing.T) {
 		bad := append([]db.WeaponPerkRow{}, links...)
 		bad = append(bad, db.WeaponPerkRow{WeaponHash: 9999, ColumnIndex: 0, PerkHash: 30})
-		if _, err := Build("v", testTime, weapons, perks, bad, rollRows); err == nil || !strings.Contains(err.Error(), "9999") {
+		if _, err := Build("v", testTime, weapons, perks, bad, rollRows, rankings); err == nil || !strings.Contains(err.Error(), "9999") {
 			t.Fatalf("want orphan-link error, got %v", err)
 		}
 	})
@@ -134,19 +155,27 @@ func TestBuildRejectsOrphanRows(t *testing.T) {
 	t.Run("orphan roll", func(t *testing.T) {
 		bad := append([]db.RollPerkRow{}, rollRows...)
 		bad = append(bad, db.RollPerkRow{WeaponHash: 8888, RollID: 99, ComboKey: "x", ColumnIndex: 0, PerkHash: 30})
-		if _, err := Build("v", testTime, weapons, perks, links, bad); err == nil || !strings.Contains(err.Error(), "8888") {
+		if _, err := Build("v", testTime, weapons, perks, links, bad, rankings); err == nil || !strings.Contains(err.Error(), "8888") {
 			t.Fatalf("want orphan-roll error, got %v", err)
+		}
+	})
+
+	t.Run("orphan ranking", func(t *testing.T) {
+		bad := append([]db.WeaponRankingRow{}, rankings...)
+		bad = append(bad, db.WeaponRankingRow{WeaponHash: 7777, OverallScore: f64Ptr(1)})
+		if _, err := Build("v", testTime, weapons, perks, links, rollRows, bad); err == nil || !strings.Contains(err.Error(), "7777") {
+			t.Fatalf("want orphan-ranking error, got %v", err)
 		}
 	})
 }
 
 func TestBuildDeterministic(t *testing.T) {
-	weapons, perks, links, rollRows := fixture()
-	a, err := Build("v", testTime, weapons, perks, links, rollRows)
+	weapons, perks, links, rollRows, rankings := fixture()
+	a, err := Build("v", testTime, weapons, perks, links, rollRows, rankings)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := Build("v", testTime, weapons, perks, links, rollRows)
+	b, err := Build("v", testTime, weapons, perks, links, rollRows, rankings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,8 +187,8 @@ func TestBuildDeterministic(t *testing.T) {
 }
 
 func TestWriteProducesArtifacts(t *testing.T) {
-	weapons, perks, links, rollRows := fixture()
-	site, err := Build("v-test", testTime, weapons, perks, links, rollRows)
+	weapons, perks, links, rollRows, rankings := fixture()
+	site, err := Build("v-test", testTime, weapons, perks, links, rollRows, rankings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,8 +229,8 @@ func TestWriteProducesArtifacts(t *testing.T) {
 }
 
 func TestWriteErrors(t *testing.T) {
-	weapons, perks, links, rollRows := fixture()
-	site, err := Build("v", testTime, weapons, perks, links, rollRows)
+	weapons, perks, links, rollRows, rankings := fixture()
+	site, err := Build("v", testTime, weapons, perks, links, rollRows, rankings)
 	if err != nil {
 		t.Fatal(err)
 	}

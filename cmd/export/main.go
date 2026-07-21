@@ -95,8 +95,13 @@ func run() int {
 		log.Error("reading rolls", "error", err)
 		return 1
 	}
+	rankings, err := store.AllWeaponRankings(ctx)
+	if err != nil {
+		log.Error("reading weapon rankings", "error", err)
+		return 1
+	}
 
-	site, err := export.Build(version, time.Now(), weapons, perks, links, rollRows)
+	site, err := export.Build(version, time.Now(), weapons, perks, links, rollRows, rankings)
 	if err != nil {
 		log.Error("assembling export", "error", err)
 		return 1
