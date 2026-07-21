@@ -207,6 +207,23 @@ differs in these ways:
   `index.json` (4.37 MB vs. an earlier ~1 MB estimate — pretty-printed
   JSON's indentation inflates raw size more than first assumed) but
   gzips to 432 KB, which is what actually crosses the wire.
+- `cmd/export`'s `weapons/index.json`/`<hash>.json` entries gained
+  `overall_score`/`pve_score`/`pvp_score`/`popularity_score` (2026-07-21,
+  discovered as a real blocker for last-light-armory's task 18, not
+  planned up front): `weapon_ranking` — owned and written exclusively by
+  that repo's scoring job — previously had no read method or export field
+  at all, so the website had zero weapon-level score to sort or rank on
+  even though CLAUDE.md's own filtering-direction notes assumed one
+  existed ("v1 may launch on weapon-level rank"). `AllWeaponRankings` is a
+  plain join, not a gap: a weapon missing a ranking row (58/2208, all
+  zero-roll weapons) simply doesn't appear in the read, and `Build` leaves
+  those four fields nil rather than requiring every weapon to have one.
+  `popularity_score` is Phase 6 (community voting) and always null for
+  now — exported anyway so the shape doesn't need to change again later.
+  Verified live: Fatebringer's exported `overall_score`/`pve_score`/
+  `pvp_score` (42.83/45.31/40.36) match that repo's own hand-verified
+  values for its top roll to the decimal; exactly 58 weapons came back
+  with no ranking, matching that repo's own documented zero-roll count.
 
 ```sql
 CREATE TABLE manifest_sync_state (

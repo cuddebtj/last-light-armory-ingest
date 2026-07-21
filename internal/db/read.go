@@ -44,6 +44,19 @@ type RollPerkRow struct {
 	PerkHash     int64
 }
 
+// WeaponRankingRow is one weapon's ranking (owned and written by
+// last-light-armory's scoring job, read-only here). Not every weapon has
+// one — a weapon with zero rolls never gets a row (see that repo's
+// CLAUDE.md) — so this is a sparse overlay: a hash absent from the result
+// simply keeps every WeaponSummary ranking field nil, not zero.
+type WeaponRankingRow struct {
+	WeaponHash      int64
+	OverallScore    *float64
+	PvEScore        *float64
+	PvPScore        *float64
+	PopularityScore *float64
+}
+
 // queryAll runs a query and scans every row with scan. A free function
 // because Go methods cannot have type parameters.
 func queryAll[T any](ctx context.Context, q Querier, sql string, scan func(pgx.Rows) (T, error)) ([]T, error) {
@@ -126,6 +139,24 @@ func (s *Store) AllRollPerks(ctx context.Context) ([]RollPerkRow, error) {
 			var r RollPerkRow
 			err := rows.Scan(&r.WeaponHash, &r.RollID, &r.ComboKey, &r.PvEScore,
 				&r.PvPScore, &r.OverallScore, &r.ColumnIndex, &r.PerkHash)
+			return r, err
+		})
+}
+
+// AllWeaponRankings returns every weapon_ranking row, resolved to Bungie
+// hashes, ordered by hash. A plain (inner) join is correct, not a gap: a
+// weapon missing a ranking row just doesn't appear here, and Build leaves
+// its WeaponSummary ranking fields nil rather than requiring every weapon
+// to have one.
+func (s *Store) AllWeaponRankings(ctx context.Context) ([]WeaponRankingRow, error) {
+	return queryAll(ctx, s.pool, `
+		SELECT w.hash, wr.overall_score, wr.pve_score, wr.pvp_score, wr.popularity_score
+		FROM weapon_ranking wr
+		JOIN weapon w ON w.id = wr.weapon_id
+		ORDER BY w.hash`,
+		func(rows pgx.Rows) (WeaponRankingRow, error) {
+			var r WeaponRankingRow
+			err := rows.Scan(&r.WeaponHash, &r.OverallScore, &r.PvEScore, &r.PvPScore, &r.PopularityScore)
 			return r, err
 		})
 }

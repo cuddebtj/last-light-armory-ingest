@@ -534,6 +534,32 @@ func TestReadQueriesRoundTrip(t *testing.T) {
 	if rollRows[0].OverallScore != nil {
 		t.Errorf("unscored roll has score: %+v", rollRows[0])
 	}
+
+	// weapon_ranking is written exclusively by last-light-armory's scoring
+	// job, never by this repo, so there's no Store write method for it —
+	// insert directly to exercise the read side of the ownership split.
+	if _, err := env.pool.Exec(ctx,
+		"INSERT INTO weapon_ranking (weapon_id, overall_score, pve_score, pvp_score) "+
+			"SELECT id, 9.1, 9.5, 8.7 FROM weapon WHERE hash = 1000"); err != nil {
+		t.Fatalf("seeding weapon_ranking: %v", err)
+	}
+	rankings, err := env.store.AllWeaponRankings(ctx)
+	if err != nil {
+		t.Fatalf("AllWeaponRankings: %v", err)
+	}
+	// Only weapon 1000 has a ranking row; weapon 1001 (zero rolls) never
+	// gets one, same as production.
+	if len(rankings) != 1 || rankings[0].WeaponHash != 1000 {
+		t.Fatalf("rankings = %+v", rankings)
+	}
+	if rankings[0].OverallScore == nil || *rankings[0].OverallScore != 9.1 ||
+		rankings[0].PvEScore == nil || *rankings[0].PvEScore != 9.5 ||
+		rankings[0].PvPScore == nil || *rankings[0].PvPScore != 8.7 {
+		t.Errorf("ranking round-trip wrong: %+v", rankings[0])
+	}
+	if rankings[0].PopularityScore != nil {
+		t.Errorf("popularity_score = %v, want nil (phase 6 not started)", rankings[0].PopularityScore)
+	}
 }
 
 func TestMigrateFailsOnDirtyState(t *testing.T) {

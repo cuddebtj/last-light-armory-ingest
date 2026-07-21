@@ -71,6 +71,19 @@ type WeaponSummary struct {
 	Obtainable  bool         `json:"obtainable"`
 	RollCount   int          `json:"roll_count"`
 	Columns     []PerkColumn `json:"columns"`
+
+	// Ranking fields, owned and written by last-light-armory's scoring
+	// job (this repo only reads weapon_ranking, never writes it). All nil
+	// for a weapon with zero rolls, which never gets a ranking row (see
+	// that repo's CLAUDE.md, "best single roll represents the weapon").
+	// Weapon-level rank, not combo-level: "v1 may launch on weapon-level
+	// rank; combo-level rank is the design goal" per that repo's own
+	// filtering-direction notes — combo-level needs scoring_config's
+	// weights/base_blend exported too, which this does not yet do.
+	OverallScore    *float64 `json:"overall_score"`
+	PvEScore        *float64 `json:"pve_score"`
+	PvPScore        *float64 `json:"pvp_score"`
+	PopularityScore *float64 `json:"popularity_score"` // Phase 6 (community voting), not started — always null for now
 }
 
 // PerkColumn is one column of a weapon's full perk pool.
@@ -116,8 +129,11 @@ type Site struct {
 // combo key so output never depends on database row identity.
 //
 // A link or roll referencing a weapon absent from weapons is a data
-// integrity failure and returns an error rather than silently dropping data.
-func Build(version string, now time.Time, weapons []models.Weapon, perks []db.PerkRow, links []db.WeaponPerkRow, rollRows []db.RollPerkRow) (*Site, error) {
+// integrity failure and returns an error rather than silently dropping
+// data. rankings is the one exception: a weapon-less-common absence there
+// (zero-roll weapons) is expected, not an error — see WeaponSummary's
+// ranking field doc comment.
+func Build(version string, now time.Time, weapons []models.Weapon, perks []db.PerkRow, links []db.WeaponPerkRow, rollRows []db.RollPerkRow, rankings []db.WeaponRankingRow) (*Site, error) {
 	docs := make(map[int64]*WeaponDoc, len(weapons))
 	site := &Site{
 		Meta: Meta{ManifestVersion: version, GeneratedAt: now.UTC(), WeaponCount: len(weapons), PerkCount: len(perks)},
@@ -157,6 +173,20 @@ func Build(version string, now time.Time, weapons []models.Weapon, perks []db.Pe
 		}
 		last := &doc.Columns[len(doc.Columns)-1]
 		last.Perks = append(last.Perks, l.PerkHash)
+	}
+
+	// Apply rankings. Unlike links/rolls, a missing weapon_ranking row for
+	// a known weapon is expected (zero-roll weapons); an unknown weapon
+	// hash is still a data integrity failure, same as the other joins.
+	for _, r := range rankings {
+		doc, ok := docs[r.WeaponHash]
+		if !ok {
+			return nil, fmt.Errorf("export: weapon_ranking references unknown weapon hash %d", r.WeaponHash)
+		}
+		doc.OverallScore = r.OverallScore
+		doc.PvEScore = r.PvEScore
+		doc.PvPScore = r.PvPScore
+		doc.PopularityScore = r.PopularityScore
 	}
 
 	// Group flattened roll rows into rolls; rows arrive ordered by weapon,

@@ -45,6 +45,12 @@ func TestReadQueriesErrorPaths(t *testing.T) {
 			[]any{"not-an-int", nil, nil, nil, nil, nil, nil, nil},
 			func(s *Store) error { _, err := s.AllRollPerks(ctx); return err },
 		},
+		{
+			"AllWeaponRankings", "FROM weapon_ranking",
+			[]string{"hash", "overall_score", "pve_score", "pvp_score", "popularity_score"},
+			[]any{"not-an-int", nil, nil, nil, nil},
+			func(s *Store) error { _, err := s.AllWeaponRankings(ctx); return err },
+		},
 	}
 
 	for _, c := range calls {
