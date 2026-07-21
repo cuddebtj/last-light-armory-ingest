@@ -46,23 +46,31 @@ type Perk struct {
 	PvPScore *int16  `json:"pvp_score"`
 }
 
-// WeaponSummary is one entry in weapons/index.json: everything a list or
-// filter page needs without fetching the full document.
+// WeaponSummary is one entry in weapons/index.json: everything a list,
+// filter, or perk-combo search needs without fetching the full document.
+// Columns carries the full per-weapon perk pool (column -> perk hashes,
+// joined client-side against perks.json names) so perk filtering works
+// against the index alone — added 2026-07-21 to close the data gap
+// last-light-armory's CLAUDE.md flagged ("per-weapon perk pools aren't in
+// index.json"); previously only present on the per-weapon detail document.
 type WeaponSummary struct {
-	Hash        int64   `json:"hash"`
-	Name        string  `json:"name"`
-	Type        string  `json:"type"` // also the archetype
-	Slot        string  `json:"slot"`
-	Element     *string `json:"element"`
-	Tier        *string `json:"tier"`
-	Frame       *string `json:"frame"`
-	RPM         *int    `json:"rpm"`
-	Icon        *string `json:"icon"`      // CDN path relative to https://www.bungie.net
-	Watermark   *string `json:"watermark"` // season badge, overlaid on icon
-	Craftable   bool    `json:"craftable"`
-	Enhanceable bool    `json:"enhanceable"`
-	Obtainable  bool    `json:"obtainable"`
-	RollCount   int     `json:"roll_count"`
+	Hash        int64        `json:"hash"`
+	Name        string       `json:"name"`
+	Type        string       `json:"type"` // also the archetype
+	Slot        string       `json:"slot"`
+	Element     *string      `json:"element"`
+	Tier        *string      `json:"tier"`
+	Frame       *string      `json:"frame"`
+	RPM         *int         `json:"rpm"`
+	Icon        *string      `json:"icon"`         // CDN path relative to https://www.bungie.net
+	Watermark   *string      `json:"watermark"`    // season badge, overlaid on icon
+	AmmoType    *string      `json:"ammo_type"`    // Primary / Special / Heavy
+	BreakerType *string      `json:"breaker_type"` // intrinsic champion-breaking capability, e.g. "Shield Piercing"
+	Craftable   bool         `json:"craftable"`
+	Enhanceable bool         `json:"enhanceable"`
+	Obtainable  bool         `json:"obtainable"`
+	RollCount   int          `json:"roll_count"`
+	Columns     []PerkColumn `json:"columns"`
 }
 
 // PerkColumn is one column of a weapon's full perk pool.
@@ -87,12 +95,12 @@ type Roll struct {
 	Overall *float64   `json:"overall_score"`
 }
 
-// WeaponDoc is one weapons/<hash>.json document.
+// WeaponDoc is one weapons/<hash>.json document. Columns lives on the
+// embedded WeaponSummary (also exported in index.json, see its doc comment).
 type WeaponDoc struct {
 	WeaponSummary
-	Source  *string      `json:"source"`
-	Columns []PerkColumn `json:"columns"`
-	Rolls   []Roll       `json:"rolls"`
+	Source *string `json:"source"`
+	Rolls  []Roll  `json:"rolls"`
 }
 
 // Site is a fully assembled export, ready to write.
@@ -125,11 +133,12 @@ func Build(version string, now time.Time, weapons []models.Weapon, perks []db.Pe
 				Hash: w.Hash, Name: w.Name, Type: w.WeaponType, Slot: w.Slot,
 				Element: w.Element, Tier: w.Tier, Frame: w.Frame, RPM: w.RPM,
 				Icon: w.Icon, Watermark: w.Watermark,
+				AmmoType: w.AmmoType, BreakerType: w.BreakerType,
 				Craftable: w.Craftable, Enhanceable: w.Enhanceable, Obtainable: w.Obtainable,
+				Columns: []PerkColumn{},
 			},
-			Source:  w.Source,
-			Columns: []PerkColumn{},
-			Rolls:   []Roll{},
+			Source: w.Source,
+			Rolls:  []Roll{},
 		}
 		docs[w.Hash] = doc
 		site.Docs = append(site.Docs, doc)

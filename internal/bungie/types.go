@@ -105,6 +105,23 @@ type InventoryItemDefinition struct {
 	// item icon; present on every weapon in the current manifest.
 	IconWatermark string `json:"iconWatermark"`
 
+	// BreakerType is DestinyBreakerType (0 = none). BreakerTypeHash is the
+	// matching DestinyBreakerTypeDefinition hash (0 when BreakerType is 0),
+	// resolved to a display name via Lookups.BreakerTypes. Verified live
+	// 2026-07-21: Wish-Ender and Eriana's Vow both carry breakerType 1 /
+	// hash 485622768 ("Shield Piercing", anti-Barrier); Fatebringer and
+	// Gjallarhorn carry 0 (no intrinsic breaker capability).
+	BreakerType     int    `json:"breakerType"`
+	BreakerTypeHash uint32 `json:"breakerTypeHash"`
+
+	EquippingBlock struct {
+		// AmmoType is DestinyAmmunitionType: 0 None, 1 Primary, 2 Special,
+		// 3 Heavy. Verified live 2026-07-21 (Fatebringer 1, Eriana's Vow 2,
+		// Gjallarhorn 3) — confirms slot is not a valid proxy for ammo type
+		// (Eriana's Vow is a Special-ammo weapon in the Energy slot).
+		AmmoType int `json:"ammoType"`
+	} `json:"equippingBlock"`
+
 	Inventory struct {
 		TierTypeName   string `json:"tierTypeName"`
 		BucketTypeHash uint32 `json:"bucketTypeHash"`
@@ -165,6 +182,13 @@ type PlugSetDefinition struct {
 // DamageTypeDefinition is the subset of DestinyDamageTypeDefinition needed
 // to resolve a weapon's element name.
 type DamageTypeDefinition struct {
+	DisplayProperties DisplayProperties `json:"displayProperties"`
+}
+
+// BreakerTypeDefinition is the subset of DestinyBreakerTypeDefinition
+// needed to resolve a weapon's intrinsic champion-breaking capability
+// (e.g. hash 485622768 -> "Shield Piercing", anti-Barrier).
+type BreakerTypeDefinition struct {
 	DisplayProperties DisplayProperties `json:"displayProperties"`
 }
 

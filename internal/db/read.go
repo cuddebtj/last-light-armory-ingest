@@ -71,12 +71,13 @@ func queryAll[T any](ctx context.Context, q Querier, sql string, scan func(pgx.R
 func (s *Store) AllWeapons(ctx context.Context) ([]models.Weapon, error) {
 	return queryAll(ctx, s.pool, `
 		SELECT hash, name, weapon_type, frame, rpm, slot, element, tier, source,
-		       icon, watermark, craftable, enhanceable, obtainable
+		       icon, watermark, ammo_type, breaker_type, craftable, enhanceable, obtainable
 		FROM weapon ORDER BY hash`,
 		func(rows pgx.Rows) (models.Weapon, error) {
 			var w models.Weapon
 			err := rows.Scan(&w.Hash, &w.Name, &w.WeaponType, &w.Frame, &w.RPM, &w.Slot,
 				&w.Element, &w.Tier, &w.Source, &w.Icon, &w.Watermark,
+				&w.AmmoType, &w.BreakerType,
 				&w.Craftable, &w.Enhanceable, &w.Obtainable)
 			return w, err
 		})

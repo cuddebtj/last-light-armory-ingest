@@ -119,6 +119,7 @@ func sampleWeapons() []models.Weapon {
 			Element: strPtr("Kinetic"), Tier: strPtr("Legendary"),
 			Source: strPtr("Source: Integration testing."),
 			Icon:   strPtr("/icons/rifle.jpg"), Watermark: strPtr("/icons/season.png"),
+			AmmoType: strPtr("Primary"), BreakerType: strPtr("Shield Piercing"),
 			Craftable: true, Enhanceable: true, Obtainable: true,
 		},
 		{Hash: 1001, Name: "Sparse Sword", WeaponType: "Sword", Slot: "Power"},
@@ -495,6 +496,12 @@ func TestReadQueriesRoundTrip(t *testing.T) {
 	}
 	if weapons[0].Watermark == nil || *weapons[0].Watermark != "/icons/season.png" {
 		t.Errorf("watermark round-trip wrong: %v", weapons[0].Watermark)
+	}
+	if weapons[0].AmmoType == nil || *weapons[0].AmmoType != "Primary" || weapons[1].AmmoType != nil {
+		t.Errorf("ammo_type round-trip wrong: %+v", weapons)
+	}
+	if weapons[0].BreakerType == nil || *weapons[0].BreakerType != "Shield Piercing" || weapons[1].BreakerType != nil {
+		t.Errorf("breaker_type round-trip wrong: %+v", weapons)
 	}
 
 	perks, err := env.store.AllPerks(ctx)

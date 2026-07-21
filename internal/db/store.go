@@ -111,27 +111,30 @@ func (s *Store) UpsertWeapons(ctx context.Context, weapons []models.Weapon) (Cou
 
 	rows, err := s.pool.Query(ctx, `
 		INSERT INTO weapon (hash, name, weapon_type, frame, rpm, slot, element, tier, source,
-		                    icon, watermark, craftable, enhanceable, obtainable)
+		                    icon, watermark, ammo_type, breaker_type, craftable, enhanceable, obtainable)
 		SELECT * FROM unnest($1::bigint[], $2::text[], $3::text[], $4::text[], $5::int[], $6::text[],
 		                     $7::text[], $8::text[], $9::text[], $10::text[], $11::text[],
-		                     $12::boolean[], $13::boolean[], $14::boolean[])
+		                     $12::text[], $13::text[],
+		                     $14::boolean[], $15::boolean[], $16::boolean[])
 		ON CONFLICT (hash) DO UPDATE SET
 			name = excluded.name, weapon_type = excluded.weapon_type, frame = excluded.frame,
 			rpm = excluded.rpm, slot = excluded.slot, element = excluded.element,
 			tier = excluded.tier, source = excluded.source, icon = excluded.icon,
-			watermark = excluded.watermark, craftable = excluded.craftable,
+			watermark = excluded.watermark, ammo_type = excluded.ammo_type,
+			breaker_type = excluded.breaker_type, craftable = excluded.craftable,
 			enhanceable = excluded.enhanceable, obtainable = excluded.obtainable,
 			updated_at = now()
 		WHERE (weapon.name, weapon.weapon_type, weapon.frame, weapon.rpm, weapon.slot, weapon.element,
-		       weapon.tier, weapon.source, weapon.icon, weapon.watermark,
+		       weapon.tier, weapon.source, weapon.icon, weapon.watermark, weapon.ammo_type, weapon.breaker_type,
 		       weapon.craftable, weapon.enhanceable, weapon.obtainable)
 		  IS DISTINCT FROM
 		      (excluded.name, excluded.weapon_type, excluded.frame, excluded.rpm, excluded.slot, excluded.element,
-		       excluded.tier, excluded.source, excluded.icon, excluded.watermark,
+		       excluded.tier, excluded.source, excluded.icon, excluded.watermark, excluded.ammo_type, excluded.breaker_type,
 		       excluded.craftable, excluded.enhanceable, excluded.obtainable)
 		RETURNING (xmax = 0) AS inserted`,
 		a.hashes, a.names, a.types, a.frames, a.rpms, a.slots,
 		a.elements, a.tiers, a.sources, a.icons, a.watermarks,
+		a.ammoTypes, a.breakerTypes,
 		a.craftable, a.enhanceable, a.obtainable)
 	if err != nil {
 		return Counts{}, fmt.Errorf("db: upserting weapons: %w", err)

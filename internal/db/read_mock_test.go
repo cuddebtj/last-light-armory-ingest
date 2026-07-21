@@ -23,8 +23,8 @@ func TestReadQueriesErrorPaths(t *testing.T) {
 	}{
 		{
 			"AllWeapons", "FROM weapon ORDER BY hash",
-			[]string{"hash", "name", "weapon_type", "frame", "rpm", "slot", "element", "tier", "source", "icon", "watermark", "craftable", "enhanceable", "obtainable"},
-			[]any{"not-an-int", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+			[]string{"hash", "name", "weapon_type", "frame", "rpm", "slot", "element", "tier", "source", "icon", "watermark", "ammo_type", "breaker_type", "craftable", "enhanceable", "obtainable"},
+			[]any{"not-an-int", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
 			func(s *Store) error { _, err := s.AllWeapons(ctx); return err },
 		},
 		{

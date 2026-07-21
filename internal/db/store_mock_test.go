@@ -147,7 +147,7 @@ func TestUpsertWeaponsMock(t *testing.T) {
 
 	t.Run("query error", func(t *testing.T) {
 		mock, store := newMock(t)
-		mock.ExpectQuery("INSERT INTO weapon").WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).WillReturnError(errBoom)
+		mock.ExpectQuery("INSERT INTO weapon").WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).WillReturnError(errBoom)
 		if _, err := store.UpsertWeapons(ctx, weapons); !errors.Is(err, errBoom) {
 			t.Errorf("err = %v", err)
 		}
@@ -155,7 +155,7 @@ func TestUpsertWeaponsMock(t *testing.T) {
 
 	t.Run("happy", func(t *testing.T) {
 		mock, store := newMock(t)
-		mock.ExpectQuery("INSERT INTO weapon").WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		mock.ExpectQuery("INSERT INTO weapon").WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 			WillReturnRows(pgxmock.NewRows([]string{"inserted"}).AddRow(true))
 		c, err := store.UpsertWeapons(ctx, weapons)
 		if err != nil || c.Inserted != 1 {

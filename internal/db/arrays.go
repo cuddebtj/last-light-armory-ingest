@@ -24,40 +24,44 @@ func perkArrays(perks []models.Perk) (hashes []int64, names []string, enhanced [
 // weaponArrayArgs carries the parallel arrays for the weapon upsert.
 // Nullable columns use pointer slices: pgx encodes a nil element as SQL NULL.
 type weaponArrayArgs struct {
-	hashes      []int64
-	names       []string
-	types       []string
-	frames      []*string
-	rpms        []*int32
-	slots       []string
-	elements    []*string
-	tiers       []*string
-	sources     []*string
-	icons       []*string
-	watermarks  []*string
-	craftable   []bool
-	enhanceable []bool
-	obtainable  []bool
+	hashes       []int64
+	names        []string
+	types        []string
+	frames       []*string
+	rpms         []*int32
+	slots        []string
+	elements     []*string
+	tiers        []*string
+	sources      []*string
+	icons        []*string
+	watermarks   []*string
+	ammoTypes    []*string
+	breakerTypes []*string
+	craftable    []bool
+	enhanceable  []bool
+	obtainable   []bool
 }
 
 // weaponArrays flattens weapons into parallel unnest arrays.
 func weaponArrays(weapons []models.Weapon) weaponArrayArgs {
 	n := len(weapons)
 	a := weaponArrayArgs{
-		hashes:      make([]int64, n),
-		names:       make([]string, n),
-		types:       make([]string, n),
-		frames:      make([]*string, n),
-		rpms:        make([]*int32, n),
-		slots:       make([]string, n),
-		elements:    make([]*string, n),
-		tiers:       make([]*string, n),
-		sources:     make([]*string, n),
-		icons:       make([]*string, n),
-		watermarks:  make([]*string, n),
-		craftable:   make([]bool, n),
-		enhanceable: make([]bool, n),
-		obtainable:  make([]bool, n),
+		hashes:       make([]int64, n),
+		names:        make([]string, n),
+		types:        make([]string, n),
+		frames:       make([]*string, n),
+		rpms:         make([]*int32, n),
+		slots:        make([]string, n),
+		elements:     make([]*string, n),
+		tiers:        make([]*string, n),
+		sources:      make([]*string, n),
+		icons:        make([]*string, n),
+		watermarks:   make([]*string, n),
+		ammoTypes:    make([]*string, n),
+		breakerTypes: make([]*string, n),
+		craftable:    make([]bool, n),
+		enhanceable:  make([]bool, n),
+		obtainable:   make([]bool, n),
 	}
 	for i, w := range weapons {
 		a.hashes[i] = w.Hash
@@ -74,6 +78,8 @@ func weaponArrays(weapons []models.Weapon) weaponArrayArgs {
 		a.sources[i] = w.Source
 		a.icons[i] = w.Icon
 		a.watermarks[i] = w.Watermark
+		a.ammoTypes[i] = w.AmmoType
+		a.breakerTypes[i] = w.BreakerType
 		a.craftable[i] = w.Craftable
 		a.enhanceable[i] = w.Enhanceable
 		a.obtainable[i] = w.Obtainable

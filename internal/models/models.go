@@ -19,6 +19,8 @@ type Weapon struct {
 	Source      *string // collectible sourceString when present
 	Icon        *string // CDN path relative to https://www.bungie.net
 	Watermark   *string // season/expansion badge CDN path, overlaid on Icon
+	AmmoType    *string // "Primary" / "Special" / "Heavy"; nil when unresolved
+	BreakerType *string // intrinsic champion-breaking capability, e.g. "Shield Piercing"; nil when none
 	Craftable   bool
 	Enhanceable bool
 	Obtainable  bool
