@@ -4,7 +4,7 @@ A Go batch job that pulls Destiny 2 weapon and perk data from the Bungie.net
 API and loads it into the shared `last_light_armory` Postgres database. It
 runs, does its work, and exits — it is not a web service, not the ranking
 engine, and serves no HTTP traffic. Scoring, ranking, and the search UI live
-in the sibling repo, **last-light-armory**.
+in the sibling repo, [**last-light-armory**][product].
 
 ## What one run does
 
@@ -66,14 +66,21 @@ bytes, so re-exports diff cleanly in git):
 ```
 export/meta.json            manifest version, generated-at, row counts
 export/perks.json           every perk: hash, name, enhanced, curated scores
-export/weapons/index.json   slim per-weapon entries for list/filter pages
-export/weapons/<hash>.json  full detail: fields, perk pool columns, rolls
+export/weapons/index.json   one entry per weapon: fields, perk pool columns,
+                             ammo/breaker type, weapon-level ranking
+export/weapons/<hash>.json  index.json's shape plus source + every roll
 ```
 
-Weapon documents reference perks by hash; the site joins names from
-perks.json. Current size: ~46 MB pretty-printed across 2,210 files (each
-weapon doc ~20 KB — the unit a page actually fetches). Re-export whenever
-ingest imports a new manifest or the scoring repo writes new scores.
+`index.json` entries and `<hash>.json` documents share the same base shape
+on purpose (`ammo_type`/`breaker_type`/`columns`/ranking scores included on
+both, not just the detail doc) — the website's list/filter pages need the
+full perk pool and weapon-level score to filter and rank without fetching
+every weapon's detail file. Weapon documents reference perks by hash; the
+site joins names from perks.json. Current size: ~50 MB pretty-printed
+across 2,210 files. Re-export whenever ingest imports a new manifest or the
+scoring repo writes new scores — see that repo's `docs/DATA_SCHEMA.md` for
+the full field-by-field reference, including `scoring_config.json`, which
+that repo's own export command produces separately from this one.
 
 ## Layout
 
@@ -173,3 +180,17 @@ go tool cover -func=cover.out | tail -1
 - **Secrets**: `.env` is gitignored; database URLs are never logged, and
   parse errors deliberately avoid echoing the URL (pgx's own errors include
   credentials).
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for branch conventions, commit
+style, and what a PR needs to pass before merge.
+
+## License
+
+Code in this repo is licensed under the [MIT License](LICENSE). Destiny 2
+weapon names, icons, and other game data are the property of Bungie, Inc.
+and are not covered by this license — this project is an unofficial fan
+tool and claims no ownership over Destiny 2 content.
+
+[product]: https://github.com/cuddebtj/last-light-armory
